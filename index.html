@@ -173,9 +173,12 @@ async function startCamera() {
     }
 
 
-    const cameraId =
-      cameras[0].id;
+    let selectedCamera = cameras.find(function(camera) {
+  return /back|rear|environment/i.test(camera.label);
+});
 
+const cameraId =
+  selectedCamera ? selectedCamera.id : cameras[0].id;
 
     await scanner.start(
 
