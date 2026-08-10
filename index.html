@@ -181,33 +181,25 @@ const cameraId =
   selectedCamera ? selectedCamera.id : cameras[0].id;
 
     await scanner.start(
-
-      cameraId,
-
-     {
-  fps: 15,
-
-  qrbox: {
-    width: 220,
-    height: 220
+  cameraId,
+  {
+    fps: 15,
+    qrbox: {
+      width: 250,
+      height: 250
+    },
+    aspectRatio: 1.0,
+    disableFlip: false,
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.CODE_128
+    ]
   },
-
-  aspectRatio: 1.0,
-  disableFlip: false,
-
-  formatsToSupport: [
-    Html5QrcodeSupportedFormats.QR_CODE
-  ]
-},
-
-      onScanSuccess,
-
-      function(errorMessage) {
-        // QR না পাওয়া গেলে কিছু করার দরকার নেই
-      }
-
-    );
-
+  onScanSuccess,
+  function (errorMessage) {
+    // Scan না হলে কিছু করার দরকার নেই
+  }
+);
 
     cameraRunning = true;
 
