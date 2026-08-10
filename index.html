@@ -151,73 +151,71 @@ let cameraRunning = false;
 
 async function startCamera() {
 
-  const status =
-    document.getElementById("status");
+  const status = document.getElementById("status");
 
-  status.innerText =
-    "📷 Camera চালু হচ্ছে...";
-
+  status.innerText = "📷 Camera চালু হচ্ছে...";
 
   try {
 
-    scanner =
-      new Html5Qrcode("reader");
+    scanner = new Html5Qrcode("reader");
 
-
-    const cameras =
-      await Html5Qrcode.getCameras();
-
+    const cameras = await Html5Qrcode.getCameras();
 
     if (!cameras || cameras.length === 0) {
       throw new Error("Camera পাওয়া যায়নি");
     }
 
-
+    // পেছনের camera খুঁজবে
     let selectedCamera = cameras.find(function(camera) {
-  return /back|rear|environment/i.test(camera.label);
-});
+      return /back|rear|environment/i.test(camera.label);
+    });
 
-const cameraId =
-  selectedCamera ? selectedCamera.id : cameras[0].id;
+    // না পেলে প্রথম camera
+    const cameraId =
+      selectedCamera ? selectedCamera.id : cameras[0].id;
 
     await scanner.start(
-  cameraId,
-  {
-    fps: 15,
-    qrbox: {
-      width: 250,
-      height: 250
-    },
-    aspectRatio: 1.0,
-    disableFlip: false,
-    formatsToSupport: [
-      Html5QrcodeSupportedFormats.QR_CODE,
-      Html5QrcodeSupportedFormats.CODE_128
-    ]
-  },
-  onScanSuccess,
-  function (errorMessage) {
-    // Scan না হলে কিছু করার দরকার নেই
-  }
-);
+      cameraId,
+      {
+        fps: 15,
+
+        qrbox: {
+          width: 250,
+          height: 250
+        },
+
+        aspectRatio: 1.0,
+
+        disableFlip: false,
+
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.CODE_128
+        ]
+      },
+
+      onScanSuccess,
+
+      function(errorMessage) {
+        // Scan না হলে কিছু করার দরকার নেই
+      }
+    );
 
     cameraRunning = true;
 
     status.innerText =
       "📷 Camera চালু হয়েছে — QR code দেখান";
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(error);
 
+    scanner = null;
+    cameraRunning = false;
+
     status.innerText =
-      "❌ Camera চালু হয়নি: " +
-      error.message;
-
+      "❌ Camera চালু হয়নি: " + error.message;
   }
-
 }
 
 
