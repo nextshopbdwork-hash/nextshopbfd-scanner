@@ -1,14 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
 
   <title>NextShopBD Courier Scanner</title>
 
+
+  <!-- QR / Barcode Scanner -->
   <script src="https://unpkg.com/html5-qrcode"></script>
 
+
+  <!-- OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+
   <style>
+
     body {
       font-family: Arial, sans-serif;
       background: #f4f6f8;
@@ -16,14 +30,17 @@
       padding: 15px;
     }
 
+
     .container {
       max-width: 500px;
       margin: auto;
     }
 
+
     h2 {
       text-align: center;
     }
+
 
     .card {
       background: white;
@@ -33,9 +50,18 @@
       box-shadow: 0 2px 8px rgba(0,0,0,.1);
     }
 
+
     #reader {
       width: 100%;
+      overflow: hidden;
+      border-radius: 10px;
     }
+
+
+    #ocrCanvas {
+      display: none;
+    }
+
 
     label {
       display: block;
@@ -43,7 +69,10 @@
       font-weight: bold;
     }
 
-    input, select, button {
+
+    input,
+    select,
+    button {
       width: 100%;
       box-sizing: border-box;
       padding: 12px;
@@ -53,6 +82,7 @@
       font-size: 16px;
     }
 
+
     button {
       background: #16803c;
       color: white;
@@ -61,35 +91,86 @@
       cursor: pointer;
     }
 
+
     #stopBtn {
       background: #c62828;
     }
+
+
+    #ocrBtn {
+      background: #1565c0;
+    }
+
 
     #status {
       text-align: center;
       margin-top: 12px;
       font-weight: bold;
+      line-height: 1.5;
     }
+
+
+    #ocrText {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 100px;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
   </style>
+
 </head>
+
 
 <body>
 
+
 <div class="container">
 
-  <h2>📦 NextShopBD<br>Courier Scan Panel</h2>
+
+  <h2>
+    📦 NextShopBD<br>
+    Courier Scan Panel
+  </h2>
+
+
+  <!-- CAMERA -->
 
   <div class="card">
 
     <div id="reader"></div>
 
-    <button id="startBtn" onclick="startCamera()">
+
+    <canvas id="ocrCanvas"></canvas>
+
+
+    <button
+      id="startBtn"
+      onclick="startCamera()"
+    >
       📷 START CAMERA
     </button>
 
-    <button id="stopBtn" onclick="stopCamera()">
+
+    <button
+      id="stopBtn"
+      onclick="stopCamera()"
+    >
       ⛔ STOP CAMERA
     </button>
+
+
+    <button
+      id="ocrBtn"
+      onclick="runOCR()"
+    >
+      📝 OCR CURRENT LABEL
+    </button>
+
 
     <div id="status">
       Camera বন্ধ আছে
@@ -98,51 +179,124 @@
   </div>
 
 
+
+  <!-- FORM -->
+
   <div class="card">
+
 
     <label>Courier</label>
 
     <select id="courier">
-      <option value="">Auto Detect</option>
-      <option value="Pathao">Pathao</option>
-      <option value="Steadfast">Steadfast</option>
+
+      <option value="">
+        Auto Detect
+      </option>
+
+      <option value="Pathao">
+        Pathao
+      </option>
+
+      <option value="Steadfast">
+        Steadfast
+      </option>
+
     </select>
 
 
+
     <label>Order ID</label>
-    <input id="orderId" type="text">
+
+    <input
+      id="orderId"
+      type="text"
+    >
+
+
+
+    <label>DN / Tracking ID</label>
+
+    <input
+      id="dn"
+      type="text"
+    >
+
 
 
     <label>Customer Phone</label>
-    <input id="phone" type="text">
+
+    <input
+      id="phone"
+      type="text"
+    >
+
 
 
     <label>Product Name</label>
-    <input id="product" type="text">
+
+    <input
+      id="product"
+      type="text"
+    >
+
 
 
     <label>Qty</label>
-    <input id="qty" type="number">
+
+    <input
+      id="qty"
+      type="number"
+    >
+
 
 
     <label>COD / Price</label>
-    <input id="cod" type="number">
+
+    <input
+      id="cod"
+      type="number"
+    >
 
 
-    <button onclick="showSavedMessage()">
-      SAVE PARCEL
+
+    <label>OCR Result</label>
+
+    <textarea
+      id="ocrText"
+      readonly
+      placeholder="OCR text এখানে দেখা যাবে"
+    ></textarea>
+
+
+
+    <button
+      onclick="showSavedMessage()"
+    >
+      💾 SAVE PARCEL
     </button>
 
   </div>
 
+
 </div>
+
 
 
 <script>
 
+
+/* =========================
+   GLOBAL VARIABLES
+========================= */
+
 let scanner = null;
+
 let scannedText = "";
+
 let cameraRunning = false;
+
+let lastFrameCanvas = null;
+
 
 
 /* =========================
@@ -151,32 +305,65 @@ let cameraRunning = false;
 
 async function startCamera() {
 
-  const status = document.getElementById("status");
 
-  status.innerText = "📷 Camera চালু হচ্ছে...";
+  const status =
+    document.getElementById("status");
+
+
+  status.innerText =
+    "📷 Camera চালু হচ্ছে...";
+
 
   try {
 
-    scanner = new Html5Qrcode("reader");
 
-    const cameras = await Html5Qrcode.getCameras();
+    scanner =
+      new Html5Qrcode("reader");
 
-    if (!cameras || cameras.length === 0) {
-      throw new Error("Camera পাওয়া যায়নি");
+
+    const cameras =
+      await Html5Qrcode.getCameras();
+
+
+    if (
+      !cameras ||
+      cameras.length === 0
+    ) {
+
+      throw new Error(
+        "Camera পাওয়া যায়নি"
+      );
+
     }
 
-    // পেছনের camera খুঁজবে
-    let selectedCamera = cameras.find(function(camera) {
-      return /back|rear|environment/i.test(camera.label);
-    });
 
-    // না পেলে প্রথম camera
+    /*
+      Rear / Back camera
+      আগে নির্বাচন করার চেষ্টা
+    */
+
+    let selectedCamera =
+      cameras.find(function(camera) {
+
+        return /back|rear|environment/i
+          .test(camera.label);
+
+      });
+
+
     const cameraId =
-      selectedCamera ? selectedCamera.id : cameras[0].id;
+      selectedCamera
+        ? selectedCamera.id
+        : cameras[0].id;
+
+
 
     await scanner.start(
+
       cameraId,
+
       {
+
         fps: 15,
 
         qrbox: {
@@ -189,34 +376,66 @@ async function startCamera() {
         disableFlip: false,
 
         formatsToSupport: [
+
           Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.CODE_128
+
+          Html5QrcodeSupportedFormats.CODE_128,
+
+          Html5QrcodeSupportedFormats.CODE_39,
+
+          Html5QrcodeSupportedFormats.EAN_13,
+
+          Html5QrcodeSupportedFormats.EAN_8
+
         ]
+
       },
+
 
       onScanSuccess,
 
+
       function(errorMessage) {
-        // Scan না হলে কিছু করার দরকার নেই
+
+        /*
+          QR না পাওয়া গেলে
+          কিছু করার দরকার নেই
+        */
+
       }
+
     );
 
+
     cameraRunning = true;
+
 
     status.innerText =
       "📷 Camera চালু হয়েছে — QR code দেখান";
 
-  } catch (error) {
+
+  }
+
+
+  catch(error) {
+
 
     console.error(error);
 
+
     scanner = null;
+
     cameraRunning = false;
 
+
     status.innerText =
-      "❌ Camera চালু হয়নি: " + error.message;
+      "❌ Camera চালু হয়নি: " +
+      error.message;
+
   }
+
 }
+
 
 
 /* =========================
@@ -225,46 +444,307 @@ async function startCamera() {
 
 async function stopCamera() {
 
-  if (scanner && cameraRunning) {
+
+  if (
+    scanner &&
+    cameraRunning
+  ) {
+
 
     try {
+
       await scanner.stop();
+
       await scanner.clear();
+
     }
 
-    catch (error) {
+
+    catch(error) {
+
       console.log(error);
+
     }
 
   }
 
+
   scanner = null;
+
   cameraRunning = false;
 
-  document.getElementById("status").innerText =
+
+  document.getElementById(
+    "status"
+  ).innerText =
     "Camera বন্ধ আছে";
 
 }
+
+
+
+/* =========================
+   CAPTURE CURRENT CAMERA FRAME
+========================= */
+
+function captureCameraFrame() {
+
+
+  const video =
+    document.querySelector(
+      "#reader video"
+    );
+
+
+  if (!video) {
+
+    return null;
+
+  }
+
+
+  if (
+    !video.videoWidth ||
+    !video.videoHeight
+  ) {
+
+    return null;
+
+  }
+
+
+  const canvas =
+    document.getElementById(
+      "ocrCanvas"
+    );
+
+
+  canvas.width =
+    video.videoWidth;
+
+
+  canvas.height =
+    video.videoHeight;
+
+
+  const ctx =
+    canvas.getContext("2d");
+
+
+  ctx.drawImage(
+    video,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  return canvas;
+
+}
+
 
 
 /* =========================
    QR SUCCESS
 ========================= */
 
-function onScanSuccess(decodedText) {
+async function onScanSuccess(
+  decodedText
+) {
+
 
   if (!decodedText) {
+
     return;
+
   }
+
+
+  /*
+    একই QR বারবার scan বন্ধ
+  */
+
+  if (scannedText === decodedText) {
+
+    return;
+
+  }
+
 
   scannedText =
     decodedText;
 
-  parseCourierData(decodedText);
 
-  stopCamera();
+  /*
+    QR data parse
+  */
+
+  parseCourierData(
+    decodedText
+  );
+
+
+  /*
+    Camera frame capture
+    OCR করার আগে
+  */
+
+  const canvas =
+    captureCameraFrame();
+
+
+  if (canvas) {
+
+    lastFrameCanvas =
+      canvas;
+
+  }
+
+
+  /*
+    Camera বন্ধ
+  */
+
+  await stopCamera();
+
+
+  /*
+    OCR শুরু
+  */
+
+  if (lastFrameCanvas) {
+
+    await runOCR();
+
+  }
 
 }
+
+
+
+/* =========================
+   OCR
+========================= */
+
+async function runOCR() {
+
+
+  let canvas =
+    lastFrameCanvas;
+
+
+  /*
+    যদি আগে capture করা frame না থাকে,
+    তাহলে current camera থেকে নেবে
+  */
+
+  if (!canvas) {
+
+    canvas =
+      captureCameraFrame();
+
+  }
+
+
+  if (!canvas) {
+
+    document.getElementById(
+      "status"
+    ).innerText =
+      "❌ Camera frame পাওয়া যায়নি";
+
+    return;
+
+  }
+
+
+  const status =
+    document.getElementById(
+      "status"
+    );
+
+
+  status.innerText =
+    "📝 OCR চলছে... একটু অপেক্ষা করুন";
+
+
+  try {
+
+
+    const result =
+      await Tesseract.recognize(
+
+        canvas,
+
+        "eng",
+
+        {
+
+          logger: function(info) {
+
+            if (
+              info.status ===
+              "recognizing text"
+            ) {
+
+              const percent =
+                Math.round(
+                  (info.progress || 0) * 100
+                );
+
+              status.innerText =
+                "📝 OCR চলছে... " +
+                percent +
+                "%";
+
+            }
+
+          }
+
+        }
+
+      );
+
+
+    const text =
+      result.data.text || "";
+
+
+    document.getElementById(
+      "ocrText"
+    ).value =
+      text;
+
+
+    /*
+      OCR text parse
+    */
+
+    parseCourierData(text);
+
+
+    status.innerText =
+      "✅ QR + OCR complete — তথ্যগুলো দেখে SAVE PARCEL চাপুন";
+
+
+  }
+
+
+  catch(error) {
+
+
+    console.error(error);
+
+
+    status.innerText =
+      "❌ OCR করা যায়নি";
+
+  }
+
+}
+
 
 
 /* =========================
@@ -273,141 +753,452 @@ function onScanSuccess(decodedText) {
 
 function parseCourierData(text) {
 
+
+  text =
+    String(text || "")
+      .replace(/\r/g, "\n")
+      .trim();
+
+
+  if (!text) {
+
+    return;
+
+  }
+
+
+
+  /* =========================
+     COURIER
+  ========================= */
+
   let courier = "";
 
 
-  if (/steadfast/i.test(text)) {
-    courier = "Steadfast";
+  if (
+    /steadfast/i.test(text)
+  ) {
+
+    courier =
+      "Steadfast";
+
   }
 
-  if (/pathao/i.test(text)) {
-    courier = "Pathao";
+
+  if (
+    /pathao/i.test(text)
+  ) {
+
+    courier =
+      "Pathao";
+
   }
 
 
-  document.getElementById("courier").value =
-    courier;
+  if (courier) {
 
+    document.getElementById(
+      "courier"
+    ).value =
+      courier;
+
+  }
+
+
+
+  /* =========================
+     ORDER ID
+  ========================= */
+
+  let orderId = "";
 
   let match;
 
 
-  /* Order ID */
 
-  let orderId = "";
-
-  match =
-    text.match(
-      /Order\s*ID\s*[:#-]?\s*([A-Za-z0-9-]+)/i
-    );
-
-  if (match) {
-    orderId = match[1];
-  }
-
-
-  /* Pathao DN */
-
-  if (!orderId) {
-
-    match =
-      text.match(
-        /\bDN[A-Za-z0-9-]+\b/i
-      );
-
-    if (match) {
-      orderId = match[0];
-    }
-
-  }
-
-
-  /* Steadfast Invoice */
-
-  if (!orderId) {
-
-    match =
-      text.match(
-        /Invoice\s*ID\s*[:#-]?\s*([0-9]+)/i
-      );
-
-    if (match) {
-      orderId = match[1];
-    }
-
-  }
-
-
-  document.getElementById("orderId").value =
-    orderId;
-
-
-  /* Phone */
-
-  const phones =
-    text.match(
-      /\b01[3-9][0-9]{8}\b/g
-    );
-
-  if (phones && phones.length) {
-
-    document.getElementById("phone").value =
-      phones[0];
-
-  }
-
-
-  /* COD */
+  /*
+    Order ID: 281650630
+  */
 
   match =
     text.match(
-      /(?:COD|CASH\s+ON\s+DELIVERY)\s*[:\-]?\s*(?:BDT|Tk)?\s*([0-9,]+(?:\.[0-9]+)?)/i
+      /Order\s*(?:ID|No|Number)?\s*[:#-]?\s*([A-Za-z0-9-]{5,20})/i
     );
+
 
   if (match) {
 
-    document.getElementById("cod").value =
-      match[1].replace(/,/g, "");
-
-  }
-
-
-  /* Product + Qty */
-
-  match =
-    text.match(
-      /\b([0-9]+)\s*x\s+([^\n\r]+)/i
-    );
-
-  if (match) {
-
-    document.getElementById("qty").value =
+    orderId =
       match[1];
 
-    document.getElementById("product").value =
+  }
+
+
+
+  /*
+    Invoice ID
+  */
+
+  if (!orderId) {
+
+
+    match =
+      text.match(
+        /Invoice\s*(?:ID|No|Number)?\s*[:#-]?\s*([0-9]{5,20})/i
+      );
+
+
+    if (match) {
+
+      orderId =
+        match[1];
+
+    }
+
+  }
+
+
+
+  /*
+    Standalone long numeric ID
+    যেমন 281650630
+  */
+
+  if (!orderId) {
+
+
+    const numbers =
+      text.match(
+        /\b[0-9]{7,12}\b/g
+      );
+
+
+    if (
+      numbers &&
+      numbers.length
+    ) {
+
+
+      /*
+        Phone বাদ দেওয়ার চেষ্টা
+      */
+
+      const possible =
+        numbers.find(function(num) {
+
+          return !/^01[3-9]/.test(num);
+
+        });
+
+
+      if (possible) {
+
+        orderId =
+          possible;
+
+      }
+
+    }
+
+  }
+
+
+  if (orderId) {
+
+    document.getElementById(
+      "orderId"
+    ).value =
+      orderId;
+
+  }
+
+
+
+  /* =========================
+     DN
+  ========================= */
+
+  let dn = "";
+
+
+  match =
+    text.match(
+      /\bDN[\s:#-]*([0-9A-Za-z-]{4,20})\b/i
+    );
+
+
+  if (match) {
+
+    dn =
+      "DN" + match[1];
+
+  }
+
+
+  if (dn) {
+
+    document.getElementById(
+      "dn"
+    ).value =
+      dn;
+
+  }
+
+
+
+  /* =========================
+     PHONE
+  ========================= */
+
+  const phoneMatches =
+    text.match(
+      /(?:\+?88[-\s]?)?01[3-9][-\s]?[0-9]{3}[-\s]?[0-9]{5}/g
+    );
+
+
+  if (
+    phoneMatches &&
+    phoneMatches.length
+  ) {
+
+
+    let phone =
+      phoneMatches[0]
+        .replace(
+          /[^0-9]/g,
+          ""
+        );
+
+
+    /*
+      +8801xxxxxxxxx হলে
+      01xxxxxxxxx বানাবে
+    */
+
+    if (
+      phone.startsWith("880")
+    ) {
+
+      phone =
+        phone.substring(2);
+
+    }
+
+
+    if (
+      /^01[3-9][0-9]{8}$/.test(phone)
+    ) {
+
+      document.getElementById(
+        "phone"
+      ).value =
+        phone;
+
+    }
+
+  }
+
+
+
+  /* =========================
+     COD
+  ========================= */
+
+  match =
+    text.match(
+
+      /(?:COD|CASH\s*ON\s*DELIVERY|TOTAL|AMOUNT|PRICE|COLLECT)\s*[:\-]?\s*(?:BDT|TK|৳)?\s*([0-9][0-9,]*(?:\.[0-9]+)?)/i
+
+    );
+
+
+  if (match) {
+
+
+    document.getElementById(
+      "cod"
+    ).value =
+      match[1]
+        .replace(
+          /,/g,
+          ""
+        );
+
+  }
+
+
+
+  /*
+    যদি label-এ ৳950 থাকে
+  */
+
+  if (
+    !document.getElementById(
+      "cod"
+    ).value
+  ) {
+
+
+    match =
+      text.match(
+        /(?:৳|Tk|BDT)\s*([0-9][0-9,]*)/i
+      );
+
+
+    if (match) {
+
+      document.getElementById(
+        "cod"
+      ).value =
+        match[1]
+          .replace(
+            /,/g,
+            ""
+          );
+
+    }
+
+  }
+
+
+
+  /* =========================
+     QTY
+  ========================= */
+
+  match =
+    text.match(
+      /\b([0-9]+)\s*[xX×]\s*([^\n]+)/i
+    );
+
+
+  if (match) {
+
+
+    document.getElementById(
+      "qty"
+    ).value =
+      match[1];
+
+
+    document.getElementById(
+      "product"
+    ).value =
       match[2].trim();
 
   }
 
 
-  document.getElementById("status").innerText =
-    "✅ Scan successful — তথ্যগুলো দেখে SAVE PARCEL চাপুন";
+
+  /*
+    Qty: 2
+  */
+
+  if (
+    !document.getElementById(
+      "qty"
+    ).value
+  ) {
+
+
+    match =
+      text.match(
+        /\bQty\s*[:\-]?\s*([0-9]+)/i
+      );
+
+
+    if (match) {
+
+      document.getElementById(
+        "qty"
+      ).value =
+        match[1];
+
+    }
+
+  }
+
+
+
+  /* =========================
+     PRODUCT
+  ========================= */
+
+  if (
+    !document.getElementById(
+      "product"
+    ).value
+  ) {
+
+
+    match =
+      text.match(
+        /Product\s*(?:Name)?\s*[:\-]\s*([^\n]+)/i
+      );
+
+
+    if (match) {
+
+      document.getElementById(
+        "product"
+      ).value =
+        match[1].trim();
+
+    }
+
+  }
+
+
+
+  /* =========================
+     STATUS
+  ========================= */
+
+  document.getElementById(
+    "status"
+  ).innerText =
+    "✅ Scan complete — তথ্যগুলো দেখে SAVE PARCEL চাপুন";
 
 }
 
 
+
 /* =========================
-   TEMP SAVE BUTTON
+   SAVE
 ========================= */
 
 function showSavedMessage() {
 
-  document.getElementById("status").innerText =
+
+  document.getElementById(
+    "status"
+  ).innerText =
     "✅ তথ্য প্রস্তুত আছে";
+
 
 }
 
+
+
+/* =========================
+   PAGE LOAD
+========================= */
+
+window.addEventListener(
+  "load",
+  function() {
+
+    console.log(
+      "NextShopBD Scanner Ready"
+    );
+
+  }
+);
+
+
 </script>
 
+
 </body>
+
 </html>
